@@ -4,13 +4,13 @@ Official implementation of **Glimpse: Geometry Learning of Multi-scale Structura
 
 **Zhenhua Tang, Jihua Peng, Yanbin Hao, Qiguang Miao, Chi-Man Pun**
 
-[Poster](assets/Glimpse-poster.png) / [Pretrained model](https://github.com/zhenhuat/Glimpse/releases/tag/v1.0.0) / [Checkpoint compatibility](docs/checkpoint_compatibility.md)
+[Poster](assets/Glimpse-poster.png) / [Pretrained model](#pretrained-model) / [Checkpoint compatibility](docs/checkpoint_compatibility.md)
 
 ![Glimpse poster](assets/Glimpse-poster.png)
 
 ## News
 
-- **2026.10.23**: Human3.6M training and evaluation code, the poster, and an HRNet-W32 checkpoint are released.
+- **2026.10.23**: Human3.6M training and evaluation code and the poster are released. The pretrained model will be distributed through a cloud-drive link.
 
 ## Introduction
 
@@ -30,7 +30,7 @@ Human3.6M results reported in the paper/poster, in millimeters:
 | Glimpse-HR32 | 39.5 | 32.5 |
 | Glimpse-HR48 | 39.3 | 32.3 |
 
-These are reported experimental results, not a new full-dataset evaluation of this release. This release provides the Human3.6M pipeline and an HRNet-W32 checkpoint. MPI-INF-3DHP and HRNet-W48 trained checkpoints are not included.
+These are reported experimental results, not a new full-dataset evaluation of this release. This release provides the Human3.6M pipeline. MPI-INF-3DHP code and HRNet-W48 trained checkpoints are not included.
 
 ## Environment
 
@@ -89,16 +89,20 @@ CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=2345 train_glim
 
 The model includes HRNet-W32, HRNet-W48 and CPN backbone construction. The supplied configuration and released checkpoint target **HRNet-W32**. For other backbones, prepare the corresponding weights/configuration and train a matching checkpoint. CPN backbone weights are linked in the [original project](https://github.com/QitaoZhao/ContextAware-PoseFormer#train).
 
-### Test
+### Pretrained model
 
-Download `glimpse_hrnet32.bin` from the [v1.0.0 release](https://github.com/zhenhuat/Glimpse/releases/tag/v1.0.0), and place it in `ContextPose/checkpoint/`. The file is the original experiment checkpoint with a new download filename; its contents have not been converted.
+The HRNet-W32 checkpoint will be shared through a cloud drive. **Download link: to be added.** Checkpoints are not hosted in this Git repository or its GitHub Releases.
+
+After downloading the original experiment checkpoint, name the local file `glimpse_hrnet32.bin` and place it in `ContextPose/checkpoint/`. No checkpoint conversion is needed; only the local filename changes. See the [compatibility checks and SHA-256](docs/checkpoint_compatibility.md).
+
+### Test
 
 From `ContextPose/`:
 
 ```bash
 mkdir -p checkpoint
-# Optional, with GitHub CLI installed:
-gh release download v1.0.0 --repo zhenhuat/Glimpse --pattern glimpse_hrnet32.bin --dir checkpoint
+# Place the checkpoint downloaded from the cloud drive here:
+# checkpoint/glimpse_hrnet32.bin
 
 CUDA_VISIBLE_DEVICES=1 torchrun --nproc_per_node=1 --master_port=2345 train_glimpse.py --config experiments/human36m/human36m.yaml --backbone hrnet_32 --logdir ./logs --eval
 ```

@@ -14,7 +14,7 @@ Verified on 2026-10-23 with the original HRNet-W32 experiment checkpoint.
 
 The model dictionary in the checkpoint is stored under `model`. The existing loader strips `module.` from distributed-training keys and loads it strictly. Class names are not part of these state dictionary keys, so a checkpoint conversion is unnecessary.
 
-SHA-256 of the unchanged release asset `glimpse_hrnet32.bin`:
+SHA-256 of the verified original checkpoint (use the local filename `glimpse_hrnet32.bin`; the cloud-drive download link will be added to the README):
 
 ```text
 644e03584fb6dbfd4fc6f10b82b43be826ff325363ed9dd797075e7582b58649
