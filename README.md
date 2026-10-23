@@ -34,7 +34,7 @@ These are reported experimental results, not a new full-dataset evaluation of th
 
 ## Environment
 
-The code uses Linux with **Python 3.12.9**, **PyTorch 2.4.1+cu121**, and **torchvision 0.19.1+cu121**. Training/evaluation uses CUDA. The original dependency list is retained in `ContextPose/requirements-legacy.txt` for reference.
+The code uses Linux with **Python 3.12.9**, **PyTorch 2.4.1+cu121**, and **torchvision 0.19.1+cu121**. Training/evaluation uses CUDA. The original dependency list is retained in `code/requirements-legacy.txt` for reference.
 
 ```bash
 git clone https://github.com/zhenhuat/Glimpse.git
@@ -42,8 +42,8 @@ cd Glimpse
 conda create -n glimpse python=3.12 -y
 conda activate glimpse
 pip install torch==2.4.1 torchvision==0.19.1 --index-url https://download.pytorch.org/whl/cu121
-pip install -r ContextPose/requirements.txt
-cd ContextPose
+pip install -r code/requirements.txt
+cd code
 ```
 
 ## Human3.6M
@@ -54,8 +54,8 @@ We follow the data preparation pipeline of [Context-Aware PoseFormer](https://gi
 
 1. Obtain Human3.6M under its dataset terms and prepare the RGB images using [H36M-Toolbox](https://github.com/CHUNYUWANG/H36M-Toolbox). Place the images under `Glimpse/H36M-Toolbox/images/`, or set `dataset.root` in the YAML configuration to your image directory.
 2. Use the [preprocessed Human3.6M labels provided by Context-Aware PoseFormer](https://drive.google.com/drive/folders/1OYKWnu_5GPLRfceD3Psf4-JZkloBodKx), or follow its label generation instructions with the [VideoPose3D 2D detections](https://github.com/facebookresearch/VideoPose3D/blob/main/DATASETS.md).
-3. Place `h36m_train.pkl` and `h36m_validation.pkl` in `ContextPose/data/`.
-4. Download the COCO-pretrained [HRNet-W32/W48 backbone weights linked by the original project](https://drive.google.com/drive/folders/1nzM_OBV9LbAEA7HClC0chEyf_7ECDXYA) and put them in `ContextPose/data/pretrained/coco/`.
+3. Place `h36m_train.pkl` and `h36m_validation.pkl` in `code/data/`.
+4. Download the COCO-pretrained [HRNet-W32/W48 backbone weights linked by the original project](https://drive.google.com/drive/folders/1nzM_OBV9LbAEA7HClC0chEyf_7ECDXYA) and put them in `code/data/pretrained/coco/`.
 5. Check `dataset.root`, `dataset.train_labels_path`, `dataset.val_labels_path`, and `model.backbone.checkpoint` in `experiments/human36m/human36m.yaml`.
 
 Datasets and third-party pretrained backbones are obtained separately; they are not bundled in this repository.
@@ -66,7 +66,7 @@ Glimpse/
 ├── assets/Glimpse-poster.png
 ├── H36M-Toolbox/
 │   └── images/
-└── ContextPose/
+└── code/
     ├── train_glimpse.py
     ├── experiments/human36m/human36m.yaml
     ├── checkpoint/
@@ -81,7 +81,7 @@ Glimpse/
 
 ### Train
 
-Run from `ContextPose/`:
+Run from `code/`:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 --master_port=2345 train_glimpse.py --config experiments/human36m/human36m.yaml --backbone hrnet_32 --logdir ./logs
@@ -95,11 +95,11 @@ The model includes HRNet-W32, HRNet-W48 and CPN backbone construction. The suppl
 | --- | --- | --- |
 | Glimpse-HR32 | [Baidu Netdisk](https://pan.baidu.com/s/1iFQpgdClBi2hf2NIeWSICQ?pwd=7ju5) | 7ju5 |
 
-Download glimpse_hrnet32.bin and place it in ContextPose/checkpoint/.
+Download glimpse_hrnet32.bin and place it in code/checkpoint/.
 
 ### Test
 
-From `ContextPose/`:
+From `code/`:
 
 ```bash
 mkdir -p checkpoint

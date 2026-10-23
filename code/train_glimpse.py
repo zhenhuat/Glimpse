@@ -131,7 +131,7 @@ def setup_dataloaders(config, is_train=True, distributed_train=False, rank=None,
 def setup_experiment(config, model_name, is_train=True):
     prefix = "" if is_train else "eval_"
     experiment_title = (config.title + "_" + model_name) if config.title else model_name
-    experiment_title = prefix + "Glimpse"  # Overwrite with "ConPose"
+    experiment_title = prefix + "Glimpse"
     experiment_name = '{}@{}'.format(experiment_title, datetime.now().strftime("%d.%m.%Y-%H:%M:%S"))
     print(f"Experiment name: {experiment_name}")
 
