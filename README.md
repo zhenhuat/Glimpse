@@ -4,13 +4,13 @@ Official implementation of **Glimpse: Geometry Learning of Multi-scale Structura
 
 **Zhenhua Tang, Jihua Peng, Yanbin Hao, Qiguang Miao, Chi-Man Pun**
 
-[Poster](assets/Glimpse-poster.png) / [Pretrained model](#pretrained-model) / [Checkpoint compatibility](docs/checkpoint_compatibility.md)
+[Poster](assets/Glimpse-poster.png) / [Pretrained model](#pretrained-model)
 
 ![Glimpse poster](assets/Glimpse-poster.png)
 
 ## News
 
-- **2026.10.23**: Human3.6M training and evaluation code and the poster are released. The pretrained model will be distributed through a cloud-drive link.
+- **2026.10.23**: Human3.6M training and evaluation code and the poster are released. The [HRNet-W32 pretrained model](https://pan.baidu.com/s/1iFQpgdClBi2hf2NIeWSICQ?pwd=7ju5) is available on Baidu Netdisk (extraction code: 7ju5).
 
 ## Introduction
 
@@ -34,7 +34,7 @@ These are reported experimental results, not a new full-dataset evaluation of th
 
 ## Environment
 
-The checkpoint-loading and forward-equivalence checks were run on Linux with **Python 3.12.9**, **PyTorch 2.4.1+cu121**, and **torchvision 0.19.1+cu121**. Training/evaluation uses CUDA. The original dependency list is retained in `ContextPose/requirements-legacy.txt` for reference.
+The code uses Linux with **Python 3.12.9**, **PyTorch 2.4.1+cu121**, and **torchvision 0.19.1+cu121**. Training/evaluation uses CUDA. The original dependency list is retained in `ContextPose/requirements-legacy.txt` for reference.
 
 ```bash
 git clone https://github.com/zhenhuat/Glimpse.git
@@ -91,9 +91,11 @@ The model includes HRNet-W32, HRNet-W48 and CPN backbone construction. The suppl
 
 ### Pretrained model
 
-The HRNet-W32 checkpoint will be shared through a cloud drive. **Download link: to be added.** Checkpoints are not hosted in this Git repository or its GitHub Releases.
+| Model | Download | Extraction code |
+| --- | --- | --- |
+| Glimpse-HR32 | [Baidu Netdisk](https://pan.baidu.com/s/1iFQpgdClBi2hf2NIeWSICQ?pwd=7ju5) | 7ju5 |
 
-After downloading the original experiment checkpoint, name the local file `glimpse_hrnet32.bin` and place it in `ContextPose/checkpoint/`. No checkpoint conversion is needed; only the local filename changes. See the [compatibility checks and SHA-256](docs/checkpoint_compatibility.md).
+Download glimpse_hrnet32.bin and place it in ContextPose/checkpoint/.
 
 ### Test
 
@@ -127,7 +129,6 @@ The forward interface remains `model(images, keypoints_2d, keypoints_2d_crop)`: 
 
 The release renames `CA_PF` to `Glimpse` and `RayRepresentation` to `GeometricCorrection`. Internal parameter names such as `volume_net` and `ray_embedding` are intentionally retained to preserve existing checkpoints. This is the original experimental implementation with naming updates, rather than a new implementation of the paper's equations.
 
-The original experiment checkpoint was loaded into both the original and renamed complete models with `strict=True`: **1,999 keys, zero missing/unexpected keys**, and **exactly equal outputs** on the same synthetic input. See [verification details](docs/checkpoint_compatibility.md).
 
 For portability, this repository's copy uses relative dataset/backbone paths and the release checkpoint filename. The server experiment sources are unchanged.
 
