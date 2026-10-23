@@ -146,8 +146,3 @@ For portability, this repository's copy uses relative dataset/backbone paths and
 ## Acknowledgements
 
 Our code builds upon [Context-Aware PoseFormer](https://github.com/QitaoZhao/ContextAware-PoseFormer). We thank its authors for the training pipeline, data preparation instructions and backbone integrations. We also acknowledge [HRNet](https://github.com/HRNet/HRNet-Human-Pose-Estimation), [CPN](https://github.com/chenyilun95/tf-cpn), [timm](https://github.com/huggingface/pytorch-image-models), [H36M-Toolbox](https://github.com/CHUNYUWANG/H36M-Toolbox), and [VideoPose3D](https://github.com/facebookresearch/VideoPose3D).
-
-
-## License
-
-Original Glimpse contributions are provided under the [MIT License](LICENSE). Third-party code retains its original ownership and applicable terms; this license does not relicense those components. The poster and dataset assets are not covered by the source-code license.
