@@ -1,4 +1,4 @@
-## Our PoseFormer model was revised from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/vision_transformer.py
+# Transformer components adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/vision_transformer.py
 
 import math
 from functools import partial
@@ -10,8 +10,6 @@ import torch.nn.functional as F
 from torch.nn.init import constant_
 
 from timm.models.layers import DropPath
-
-
 
 
 class Mlp(nn.Module):
@@ -38,7 +36,7 @@ class Attention(nn.Module):
         super().__init__()
         self.num_heads = num_heads
         head_dim = dim // num_heads
-        # NOTE scale factor was wrong in my original version, can set manually to be compat with prev weights
+
         self.scale = qk_scale or head_dim ** -0.5
 
         self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
@@ -49,7 +47,7 @@ class Attention(nn.Module):
     def forward(self, x):
         B, N, C = x.shape
         qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-        q, k, v = qkv[0], qkv[1], qkv[2]   # make torchscript happy (cannot use tensor as tuple)
+        q, k, v = qkv[0], qkv[1], qkv[2]
 
         attn = (q @ k.transpose(-2, -1)) * self.scale
         attn = attn.softmax(dim=-1)
@@ -69,7 +67,7 @@ class Block(nn.Module):
         self.norm1 = norm_layer(dim)
         self.attn = Attention(
             dim, num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
-        # NOTE: drop path for stochastic depth, we shall see if this is better than dropout here
+
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
@@ -89,11 +87,11 @@ class DeformableBlock(nn.Module):
         head_dim = dim // num_heads
         self.norm1 = norm_layer(dim)
 
-        # === Original joint deformable parameters ===
+        # Joint deformable sampling parameters.
         self.attention_weights = nn.Linear(dim, num_heads * num_samples)
         self.sampling_offsets = nn.Linear(dim, 2 * num_heads * num_samples)
 
-        # === NEW: Limb-aware sampling (Human3.6M 17-joint) ===
+        # Limb-aware sampling (Human3.6M 17-joint topology).
         self.limb_pairs = [
             (0, 1), (1, 2), (2, 3),           # right leg
             (0, 4), (4, 5), (5, 6),           # left leg
@@ -160,13 +158,13 @@ class DeformableBlock(nn.Module):
         residual = x
         x_norm = self.norm1(x + x_0)  # [B, L, P, C]
 
-        # === 1. Joint sampling (original) ===
+        # Joint sampling.
         weights_joint = self.attention_weights(x_norm).view(b, l, p, self.num_heads, self.num_samples)
         weights_joint = F.softmax(weights_joint, dim=-1).unsqueeze(-1)  # [B,L,P,h,s,1]
         offsets_joint = self.sampling_offsets(x_norm).reshape(b, l, p, self.num_heads * self.num_samples, 2).tanh()
         pos_joint = offsets_joint + ref.view(b, 1, p, 1, -1)  # [B,L,P,h*s,2]
 
-        # === 2. Limb sampling (new) ===
+        # Limb sampling.
         if self.M > 0:
             ref_limbs = self._get_limb_ref_points(ref)  # [B, M, 2]
             # For each limb point, use average of its two endpoint joint features
@@ -184,7 +182,6 @@ class DeformableBlock(nn.Module):
         else:
             pos_limb = None
             weights_limb = None
-
 
 
         # === 3. Multi-scale feature sampling ===
@@ -222,29 +219,23 @@ class DeformableBlock(nn.Module):
                     limb_to_joint[:, :, i1] += limb_feat_point.squeeze(2)
                     limb_to_joint[:, :, i2] += limb_feat_point.squeeze(2)
                     idx += 1
-            # Average by number of limb points per joint (optional, or just add)
+
             alpha = torch.sigmoid(self.limb_fuse_gate)  # ∈ (0,1)
             out_joint = (1 - alpha) * out_joint + alpha * limb_to_joint
-            # out_joint = 0.5 * out_joint + 0.5 * limb_to_joint
-            # print(alpha[0])
-            # exit()
 
-            # out_joint = out_joint + limb_to_joint
 
         # === 4. Residual + MLP ===
         x = residual + self.drop_path(out_joint)
         x = x + self.drop_path(self.mlp(self.norm2(x)))
 
-        # Keep ray embedding injection as in original first code
+        # Refine pose tokens with geometric correction.
         ray = self.ray_embedding(x).unsqueeze(1)  # [B, 1, P, C]
         beta = torch.sigmoid(self.ray_fuse_gate)
         x_0 = (1 - beta) * x_0 + beta * ray
-        # x_0 = 0.5 * x_0 + 0.5 * ray
 
-        # x_0 = x_0 + ray
+
         x = torch.cat([x_0, x], dim=1)
         return x
-
 
 
 class GeometricCorrection(nn.Module):
@@ -287,8 +278,6 @@ class GeometricCorrection(nn.Module):
         batch_size, num_scales, num_joints, feature_dim = sampled_features.shape
 
 
-        # anchor_points = self.mlp(anchor_points)  # (B, N, C)
-
         interpolated_features = []
         for scale_idx in range(num_scales):
 
@@ -308,8 +297,6 @@ class GeometricCorrection(nn.Module):
     def forward(self, sampled_features):
         """Aggregate multi-scale input features [B, S, N, C] into correction features [B, N, C]."""
         batch_size, num_scales, num_joints, feature_dim = sampled_features.shape
-        # print(sampled_features.shape)
-        # exit()
 
 
         anchor = self.anchor_point.expand(batch_size, num_joints, 3)  # (B, N, 3)
@@ -342,29 +329,14 @@ class PoseTransformer(nn.Module):
     def __init__(self, config=None, backbone='hrnet_32', num_joints=17, in_chans=2,
                  num_heads=8, mlp_ratio=2., qkv_bias=True, qk_scale=None,
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0.2,  norm_layer=None):
-        """    ##########hybrid_backbone=None, representation_size=None,
-        Args:
-            num_frame (int, tuple): input frame number
-            num_joints (int, tuple): joints number
-            in_chans (int): number of input channels, 2D joints have 2 channels: (x,y)
-            embed_dim_ratio (int): embedding dimension ratio
-            depth (int): depth of transformer
-            num_heads (int): number of attention heads
-            mlp_ratio (int): ratio of mlp hidden dim to embedding dim
-            qkv_bias (bool): enable bias for qkv if True
-            qk_scale (float): override default qk scale of head_dim ** -0.5 if set
-            drop_rate (float): dropout rate
-            attn_drop_rate (float): attention dropout rate
-            drop_path_rate (float): stochastic depth rate
-            norm_layer: (nn.Module): normalization layer
-        """
+        """Initialize pose embedding, geometry learning, and fusion stages."""
         super().__init__()
 
         norm_layer = norm_layer or partial(nn.LayerNorm, eps=1e-6)
         base_dim = config.base_dim
         embed_dim_ratio = config.embed_dim_ratio
         depth = config.levels
-        out_dim = 3    #### output dimension is num_joints * 3
+        out_dim = 3    # 3D coordinates per joint.
         self.levels = config.levels
         embed_dim = embed_dim_ratio * (self.levels+1)
 
@@ -379,7 +351,7 @@ class PoseTransformer(nn.Module):
         self.feat_embed = nn.ModuleList([nn.Linear(dim_in, embed_dim_ratio) for dim_in in feature_dim_list])
 
         self.Spatial_pos_embed = nn.Parameter(torch.zeros(1, 1+self.levels, num_joints, embed_dim_ratio))
-        # self.Spatial_pos_embed = nn.Parameter(torch.zeros(1,  num_joints, embed_dim_ratio))
+
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # stochastic depth decay rule
@@ -396,9 +368,6 @@ class PoseTransformer(nn.Module):
                 drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[i], norm_layer=norm_layer)
             for i in range(depth)])
 
-        # self.context_blocks = nn.ModuleList([
-        #     DeformableBlock(feature_dim_list=feature_dim_list, dim=embed_dim_ratio, num_heads=4, num_samples=4, qkv_bias=qkv_bias, drop_path=dpr[i])
-        #     for i in range(depth)])
 
         self.context_blocks = nn.ModuleList([
             DeformableBlock(feature_dim_list=feature_dim_list, dim=embed_dim_ratio, num_heads=4, num_samples=4, qkv_bias=qkv_bias, drop_path=dpr[i])
@@ -406,19 +375,10 @@ class PoseTransformer(nn.Module):
 
         self.head = nn.Sequential(nn.LayerNorm(embed_dim),nn.Linear(embed_dim, out_dim),)
 
-        # self.ray_embedding = GeometricCorrection(num_joints=17, feature_dim=embed_dim_ratio, num_scales=4,)
-
-
-        # self.joint_blocks = nn.ModuleList([
-        #     ConvNeXt1DBlock(dim=embed_dim_ratio, kernel_size=3, drop_path_rate=dpr[i])
-        #     for i in range(depth)
-        # ])
-
-
 
     def forward(self, keypoints_2d, ref, features_list):
         b, p, c = keypoints_2d.shape
-        ### now x is [batch_size, 2 channels, receptive frames, joint_num], following image data
+        # Input keypoints: [B, P, 2].
 
         x = self.coord_embed(keypoints_2d)
 
@@ -429,9 +389,6 @@ class PoseTransformer(nn.Module):
         features_ref_list = [embed(features_ref_list[idx]) \
                              for idx, embed in enumerate(self.feat_embed)]
 
-        # ray_embedded = self.ray_embedding(features_ref_list)
-
-        # x = x + ray_embedded
 
         x = torch.stack([x,*features_ref_list], dim=1) # [b, 5, p, c]
 
@@ -442,7 +399,6 @@ class PoseTransformer(nn.Module):
         for blk in self.context_blocks:
             x = blk(x, ref, features_list)
 
-        # # x = torch.cat([x,ray_embedded],1)
 
         x = rearrange(x, 'b l p c -> (b p) l c')
 
@@ -453,11 +409,10 @@ class PoseTransformer(nn.Module):
 
         for blk in self.joint_blocks:
             x = blk(x)
-        # x = rearrange(x, 'b (l c) p -> b p (l c)', l=self.levels + 1)
-        # x = rearrange(x, 'b c p -> b p c')
+
 
         x = self.head(x).view(b, 1, p, -1)
-        # print(1234)
-        # exit()
+
+
         return x
 

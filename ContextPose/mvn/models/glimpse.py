@@ -4,9 +4,9 @@ from torch import nn
 from mvn.models import pose_hrnet
 from mvn.models.networks import network
 from mvn.models.cpn.test_config import cfg
-# from mvn.models.pose_raylimb import PoseTransformer
+
 from mvn.models.pose_glimpse import PoseTransformer
-# from mvn.models.pose_rayformer import PoseTransformer
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -29,21 +29,6 @@ class Glimpse(nn.Module):
 
         self.volume_net = PoseTransformer(config.model.poseformer, backbone=config.model.backbone.type)
         self.visualize = True
-
-
-    # def forward(self, images, keypoints_2d_cpn, keypoints_2d_cpn_crop):
-    #     device = keypoints_2d_cpn.device
-    #     images = images.permute(0, 3, 1, 2).contiguous()
-
-    #     keypoints_2d_cpn_crop[..., :2] /= torch.tensor([192//2, 256//2], device=device)
-    #     keypoints_2d_cpn_crop[..., :2] -= torch.tensor([1, 1], device=device)
-
-    #     # forward backbone
-    #     features_list = self.backbone(images)
-
-    #     keypoints_3d = self.volume_net(keypoints_2d_cpn, keypoints_2d_cpn_crop, features_list)
-
-    #     return keypoints_3d
 
 
     def forward(self, images, keypoints_2d_cpn, keypoints_2d_cpn_crop):
