@@ -88,11 +88,11 @@ class DeformableBlock(nn.Module):
         self.num_samples = num_samples
         head_dim = dim // num_heads
         self.norm1 = norm_layer(dim)
-        
+
         # === Original joint deformable parameters ===
         self.attention_weights = nn.Linear(dim, num_heads * num_samples)
         self.sampling_offsets = nn.Linear(dim, 2 * num_heads * num_samples)
-        
+
         # === NEW: Limb-aware sampling (Human3.6M 17-joint) ===
         self.limb_pairs = [
             (0, 1), (1, 2), (2, 3),           # right leg
@@ -104,13 +104,13 @@ class DeformableBlock(nn.Module):
         self.num_limb_points = 3 # number of points sampled per limb
         self.num_limbs = len(self.limb_pairs)
         self.M = self.num_limbs * self.num_limb_points
-        
+
         if self.M > 0:
             # Use joint features to predict limb offsets/weights
             self.limb_offset_proj = nn.Linear(dim, 2 * num_heads * num_samples)
             self.limb_weight_proj = nn.Linear(dim, num_heads * num_samples)
             self.limb_fuse_gate = nn.Parameter(torch.ones(1, 1, 1, dim))
-        
+
         self.embed_proj = nn.ModuleList([nn.Linear(dim_in, head_dim) for dim_in in feature_dim_list])
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
@@ -118,7 +118,7 @@ class DeformableBlock(nn.Module):
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.ray_embedding = GeometricCorrection(num_joints=17, feature_dim=dim, num_scales=4)
         self.ray_fuse_gate = nn.Parameter(torch.ones(1, 1, 1, dim))
-        
+
         self._reset_parameters()
 
     def _reset_parameters(self):
@@ -132,7 +132,7 @@ class DeformableBlock(nn.Module):
             self.sampling_offsets.bias = nn.Parameter(grid_init.view(-1))
         constant_(self.attention_weights.weight.data, 0.)
         constant_(self.attention_weights.bias.data, 0.)
-        
+
         if self.M > 0:
             constant_(self.limb_offset_proj.weight.data, 0.)
             with torch.no_grad():
@@ -249,105 +249,90 @@ class DeformableBlock(nn.Module):
 
 class GeometricCorrection(nn.Module):
     def __init__(self, num_joints=17, feature_dim=128, num_scales=4, init_weight_zero=True, sigma=1.0):
-        """
-        :param num_joints: 关键点数量 (N)
-        :param feature_dim: 特征维度 (C)
-        :param num_scales: 特征图的尺度数量（例如 4）
-        :param init_weight_zero: 是否将权重矩阵初始化为零
-        :param sigma: 高斯插值核的标准差
-        """
+        """Initialize the learnable reference and multi-scale feature fusion."""
         super().__init__()
         self.num_joints = num_joints
         self.feature_dim = feature_dim
         self.num_scales = num_scales
         self.sigma = sigma
 
-        # 可学习的锚点
-        self.anchor_point = nn.Parameter(torch.zeros(1, 1, 3))  # 初始化为零
 
-        # 将锚点映射到高维特征空间
+        self.anchor_point = nn.Parameter(torch.zeros(1, 1, 3))
+
+
         self.mlp = nn.Sequential(
             nn.Linear(3, feature_dim),
             nn.ReLU()
         )
 
-        # 可学习的权重矩阵，形状为 (1, N, num_scales)
+
         if init_weight_zero:
-            self.weight = nn.Parameter(torch.zeros(1, num_joints, num_scales))  # 初始化为零
+            self.weight = nn.Parameter(torch.zeros(1, num_joints, num_scales))
         else:
-            self.weight = nn.Parameter(torch.randn(1, num_joints, num_scales))  # 随机初始化
+            self.weight = nn.Parameter(torch.randn(1, num_joints, num_scales))
 
-        # 激活函数
-        self.softmax = nn.Softmax(dim=-1)  # 对权重进行归一化
-        self.activation = nn.ReLU()  # 非线性激活
 
-        # 射线特征变换模块
+        self.softmax = nn.Softmax(dim=-1)
+        self.activation = nn.ReLU()
+
+
         self.ray_transform = nn.Sequential(
-            nn.Linear(feature_dim * 2, feature_dim),  # 输入是锚点特征和采样特征的拼接
+            nn.Linear(feature_dim * 2, feature_dim),
             nn.ReLU(),
             nn.Linear(feature_dim, feature_dim)
         )
 
     def interpolate_features(self, sampled_features, anchor_points, sigma=1.0):
-        """
-        使用高斯插值核平滑过渡不同尺度的特征。
-        :param sampled_features: 不同尺度采样的特征张量，形状为 (B, num_scales, N, C)
-        :param anchor_points: 锚点位置，形状为 (B, N, 3)
-        :param sigma: 高斯核的标准差
-        :return: 插值后的特征，形状为 (B, N, C, num_scales)
-        """
+        """Apply Gaussian weighting to features [B, S, N, C] using reference features [B, N, C]."""
         batch_size, num_scales, num_joints, feature_dim = sampled_features.shape
 
-        # 将锚点映射到特征维度 C
+
         # anchor_points = self.mlp(anchor_points)  # (B, N, C)
 
         interpolated_features = []
         for scale_idx in range(num_scales):
-            # 获取当前尺度的特征
+
             sampled = sampled_features[:, scale_idx]  # (B, N, C)
 
-            # 计算高斯权重
-            distances = torch.norm(sampled - anchor_points, dim=-1)  # (B, N)
-            weights = torch.exp(-distances.pow(2) / (2 * sigma**2))  # 高斯权重
-            weights = weights / (weights.sum(dim=-1, keepdim=True) + 1e-6)  # 归一化
 
-            # 加权特征
+            distances = torch.norm(sampled - anchor_points, dim=-1)  # (B, N)
+            weights = torch.exp(-distances.pow(2) / (2 * sigma**2))
+            weights = weights / (weights.sum(dim=-1, keepdim=True) + 1e-6)
+
+
             weighted_feature = weights.unsqueeze(-1) * sampled  # (B, N, C)
-            interpolated_features.append(weighted_feature.unsqueeze(-1))  # 确保形状为 (B, N, C, 1)
+            interpolated_features.append(weighted_feature.unsqueeze(-1))
 
         return torch.cat(interpolated_features, dim=-1)  # (B, N, C, num_scales)
 
     def forward(self, sampled_features):
-        """
-        :param sampled_features: 不同尺度采样的特征张量，形状为 (B, num_scales, N, C)
-        :return: 最终的射线表征，形状为 (B, N, C)
-        """
+        """Aggregate multi-scale input features [B, S, N, C] into correction features [B, N, C]."""
         batch_size, num_scales, num_joints, feature_dim = sampled_features.shape
         # print(sampled_features.shape)
         # exit()
 
-        # 获取可学习的锚点
+
         anchor = self.anchor_point.expand(batch_size, num_joints, 3)  # (B, N, 3)
         ref_point = self.mlp(anchor)  # (B, N, C)
 
-        # 插值平滑过渡特征
+
         interpolated_features = self.interpolate_features(sampled_features, ref_point, sigma=self.sigma)
 
-        # 动态加权非线性组合
+
         ray_representations = []
         for scale_idx in range(num_scales):
-            # 拼接锚点特征和插值后的多尺度特征
+
             combined_feature = torch.cat([ref_point, interpolated_features[..., scale_idx]], dim=-1)  # (B, N, 2C)
-            ray_representation = self.ray_transform(combined_feature)  # 非线性变换
-            ray_representation = F.normalize(ray_representation, dim=-1)  # 归一化
+            ray_representation = self.ray_transform(combined_feature)
+            ray_representation = F.normalize(ray_representation, dim=-1)
             ray_representations.append(ray_representation)
 
-        # 加权聚合射线表征
+
         ray_representations = torch.stack(ray_representations, dim=-1)  # (B, N, C, num_scales)
 
-        # 可学习的权重
+
         weights = self.softmax(self.weight)  # (1, N, num_scales)
-        weights = weights.expand(batch_size, -1, -1)  # 扩展到 (B, N, num_scales)
+        weights = weights.expand(batch_size, -1, -1)
 
         aggregated_rays = torch.sum(weights.unsqueeze(2) * ray_representations, dim=-1)  # (B, N, C)
 
@@ -423,7 +408,7 @@ class PoseTransformer(nn.Module):
 
         # self.ray_embedding = GeometricCorrection(num_joints=17, feature_dim=embed_dim_ratio, num_scales=4,)
 
-        # 替换 joint_blocks 为基于 1D 卷积的大核卷积模块
+
         # self.joint_blocks = nn.ModuleList([
         #     ConvNeXt1DBlock(dim=embed_dim_ratio, kernel_size=3, drop_path_rate=dpr[i])
         #     for i in range(depth)
@@ -453,7 +438,7 @@ class PoseTransformer(nn.Module):
 
         x += self.Spatial_pos_embed
         x = self.pos_drop(x)
-        
+
         for blk in self.context_blocks:
             x = blk(x, ref, features_list)
 

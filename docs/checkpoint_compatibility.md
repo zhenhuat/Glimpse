@@ -20,6 +20,6 @@ SHA-256 of the verified original checkpoint (use the local filename `glimpse_hrn
 644e03584fb6dbfd4fc6f10b82b43be826ff325363ed9dd797075e7582b58649
 ```
 
-The public model files preserve the renamed server sources, apart from Git line-ending normalization. The public training entry differs from the renamed server entry only in resource path strings. The YAML uses portable resource paths. No model arithmetic, preprocessing, optimization, flip testing or metric computation was changed for publication.
+The public model files preserve the renamed server computation; Chinese comments have been removed and Chinese docstrings replaced with English descriptions. Executable AST equality was checked before and after this documentation cleanup. Git also normalizes line endings. The public training entry differs from the renamed server entry only in resource path strings. The YAML uses portable resource paths. No model arithmetic, preprocessing, optimization, flip testing or metric computation was changed for publication.
 
 These checks establish compatibility and output equivalence. They are not a rerun of the full Human3.6M benchmark, nor a verification that every reported paper result is reproduced by this particular checkpoint.

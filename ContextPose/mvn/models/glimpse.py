@@ -7,8 +7,8 @@ from mvn.models.cpn.test_config import cfg
 # from mvn.models.pose_raylimb import PoseTransformer
 from mvn.models.pose_glimpse import PoseTransformer
 # from mvn.models.pose_rayformer import PoseTransformer
-import numpy as np 
-import matplotlib.pyplot as plt 
+import numpy as np
+import matplotlib.pyplot as plt
 
 class Glimpse(nn.Module):
     def __init__(self, config, device='cuda:0'):
@@ -39,7 +39,7 @@ class Glimpse(nn.Module):
     #     keypoints_2d_cpn_crop[..., :2] -= torch.tensor([1, 1], device=device)
 
     #     # forward backbone
-    #     features_list = self.backbone(images) 
+    #     features_list = self.backbone(images)
 
     #     keypoints_3d = self.volume_net(keypoints_2d_cpn, keypoints_2d_cpn_crop, features_list)
 
@@ -50,12 +50,12 @@ class Glimpse(nn.Module):
         device = keypoints_2d_cpn.device
         images_perm = images.permute(0, 3, 1, 2).contiguous()
 
-        # 归一化 crop 坐标到 [-1, 1]
+
         keypoints_2d_cpn_crop[..., :2] /= torch.tensor([192//2, 256//2], device=device)
         keypoints_2d_cpn_crop[..., :2] -= torch.tensor([1, 1], device=device)
 
-        # 提取特征
+
         features_list = self.backbone(images_perm)
-        # 正常前向
+
         keypoints_3d = self.volume_net(keypoints_2d_cpn, keypoints_2d_cpn_crop, features_list)
         return keypoints_3d
